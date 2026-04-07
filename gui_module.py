@@ -2,6 +2,7 @@ import customtkinter as ctk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import tkinter.filedialog as fd
+import tkinter.messagebox as mb
 import numpy as np
 import app_logic
 import re
@@ -41,6 +42,31 @@ class RadioApp(ctk.CTk):
         self.geo_frame = self.create_group("1. Геометрия трассы")
         self.h1_entry = self.create_field(self.geo_frame, "Высота подвеса А1 (м):", "15")
         self.h2_entry = self.create_field(self.geo_frame, "Высота подвеса А2 (м):", "15")
+
+        # --- Блок ручного ввода координат ---
+        self.manual_frame = self.create_group("Ручной ввод координат (градусы)")
+        ctk.CTkLabel(self.manual_frame, text="Точка А1 (передатчик):", font=("Arial", 11, "bold")).pack(pady=(5,0), padx=10, anchor="w")
+        frame_a1 = ctk.CTkFrame(self.manual_frame, fg_color="transparent")
+        frame_a1.pack(fill="x", padx=10, pady=2)
+        ctk.CTkLabel(frame_a1, text="Широта:", width=60).pack(side="left")
+        self.lat1_entry = ctk.CTkEntry(frame_a1, width=100)
+        self.lat1_entry.pack(side="left", padx=5)
+        ctk.CTkLabel(frame_a1, text="Долгота:", width=60).pack(side="left")
+        self.lon1_entry = ctk.CTkEntry(frame_a1, width=100)
+        self.lon1_entry.pack(side="left", padx=5)
+
+        ctk.CTkLabel(self.manual_frame, text="Точка А2 (приёмник):", font=("Arial", 11, "bold")).pack(pady=(5,0), padx=10, anchor="w")
+        frame_a2 = ctk.CTkFrame(self.manual_frame, fg_color="transparent")
+        frame_a2.pack(fill="x", padx=10, pady=2)
+        ctk.CTkLabel(frame_a2, text="Широта:", width=60).pack(side="left")
+        self.lat2_entry = ctk.CTkEntry(frame_a2, width=100)
+        self.lat2_entry.pack(side="left", padx=5)
+        ctk.CTkLabel(frame_a2, text="Долгота:", width=60).pack(side="left")
+        self.lon2_entry = ctk.CTkEntry(frame_a2, width=100)
+        self.lon2_entry.pack(side="left", padx=5)
+
+        self.btn_set_manual = ctk.CTkButton(self.manual_frame, text="Установить точки", command=self.set_manual_points)
+        self.btn_set_manual.pack(pady=5, padx=10, fill="x")
 
         self.freq_frame = self.create_group("2. Частотные характеристики")
         self.freq_entry = self.create_field(self.freq_frame, "Рабочая частота f (МГц):", "2400")
@@ -158,6 +184,54 @@ class RadioApp(ctk.CTk):
     def clear_points(self):
         self.points = []
         self.refresh_map()
+
+    def set_manual_points(self):
+        """Устанавливает точки по введённым координатам после проверки границ карты."""
+        if self.current_matrix is None or self.map_extent is None:
+            mb.showerror("Ошибка", "Сначала загрузите карту .HGT")
+            return
+
+        try:
+            lat1 = float(self.lat1_entry.get())
+            lon1 = float(self.lon1_entry.get())
+            lat2 = float(self.lat2_entry.get())
+            lon2 = float(self.lon2_entry.get())
+        except ValueError:
+            mb.showerror("Ошибка", "Введите корректные числовые значения координат")
+            return
+
+        # Границы карты: extent = [left, right, bottom, top] -> (lon_min, lon_max, lat_min, lat_max)
+        lon_min, lon_max, lat_min, lat_max = self.map_extent
+
+        def check_coord(lat, lon):
+            if not (lat_min <= lat <= lat_max):
+                return False, f"Широта {lat} выходит за пределы карты ({lat_min:.4f}...{lat_max:.4f})"
+            if not (lon_min <= lon <= lon_max):
+                return False, f"Долгота {lon} выходит за пределы карты ({lon_min:.4f}...{lon_max:.4f})"
+            return True, ""
+
+        ok1, msg1 = check_coord(lat1, lon1)
+        ok2, msg2 = check_coord(lat2, lon2)
+
+        if not ok1:
+            mb.showerror("Ошибка", msg1)
+            return
+        if not ok2:
+            mb.showerror("Ошибка", msg2)
+            return
+
+        # Устанавливаем точки (очищаем предыдущие)
+        self.points = [(lat1, lon1), (lat2, lon2)]
+        self.refresh_map()
+        mb.showinfo("Успех", "Точки установлены на карте")
+
+    # --- Остальные методы (show_profile_window, create_group, create_field уже есть выше) ---
+    # Вставьте сюда полный метод show_profile_window из предыдущего ответа.
+    # (Он уже включает вывод длины интервала и аннотацию на графике)
+    # Для краткости я не копирую его снова, но он должен быть в классе.
+
+    def clear_points(self):
+        self.points = []
 
     def show_profile_window(self):
         if len(self.points) < 2 or self.hgt_path is None:
