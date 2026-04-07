@@ -225,10 +225,6 @@ class RadioApp(ctk.CTk):
 
         # --- Вспомогательная функция для вставки строки "Параметр: значение" с жирным значением ---
         def insert_parameter_line(text_widget, line, empty_line_after=True):
-            """Вставляет строку вида 'Параметр: значение' в text_widget.
-            Часть после первого двоеточия (значение) выделяется жирным.
-            Если empty_line_after=True, после строки добавляется пустая строка.
-            """
             if ':' in line:
                 param, value = line.split(':', 1)
                 param += ':'
@@ -269,7 +265,6 @@ class RadioApp(ctk.CTk):
 
         for line in initial_lines:
             insert_parameter_line(text_initial, line, empty_line_after=True)
-        # Удаляем последний лишний перевод строки
         text_initial.delete("end-2c", "end")
         text_initial.configure(state="disabled")
 
@@ -306,6 +301,11 @@ class RadioApp(ctk.CTk):
         ax_p.plot(dist[0], ant_start, 'ko', markersize=6, markeredgecolor='white')
         ax_p.plot([dist[-1], dist[-1]], [ground_end, ant_end], color='#444444', lw=3)
         ax_p.plot(dist[-1], ant_end, 'ko', markersize=6, markeredgecolor='white')
+
+        # --- Аннотация длины интервала на графике ---
+        ax_p.text(0.98, 0.98, f'Длина интервала: {total_dist:.0f} м ({total_dist / 1000:.2f} км)',
+                  transform=ax_p.transAxes, ha='right', va='top', fontsize=10,
+                  bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
 
         # --- Анализ интервала ---
         clearances = los_line - elev_curved
@@ -427,6 +427,7 @@ class RadioApp(ctk.CTk):
                     status = "ПРИГОДЕН" if P_prm_dbm >= sensitivity else "НЕ ПРИГОДЕН"
 
                     result_lines = [
+                        f"Длина интервала: {total_dist:.0f} м ({total_dist / 1000:.2f} км)",
                         f"d1: {d1:.0f} м",
                         f"d2: {d2:.0f} м",
                         f"Радиус зоны Френеля H0: {H0:.2f} м",
@@ -536,6 +537,7 @@ class RadioApp(ctk.CTk):
                     status = "ПРИГОДЕН" if P_prm_dbm >= sensitivity else "НЕ ПРИГОДЕН"
 
                     result_lines = [
+                        f"Длина интервала: {total_dist:.0f} м ({total_dist / 1000:.2f} км)",
                         f"Расстояние от передатчика до препятствия d1: {d1:.0f} м",
                         f"Расстояние от приёмника до препятствия d2: {d2:.0f} м",
                         f"Радиус зоны Френеля H0: {H0:.2f} м",
