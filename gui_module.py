@@ -4,6 +4,8 @@ from matplotlib.figure import Figure
 import tkinter.filedialog as fd
 import numpy as np
 import app_logic
+import re
+import tkinter as tk
 
 # Устанавливаем глобальную светлую тему
 ctk.set_appearance_mode("light")
@@ -181,8 +183,8 @@ class RadioApp(ctk.CTk):
             ant_type = "Однозеркальная (η=0.6)"
 
         freq_ghz = freq_mhz / 1000.0
-        wavelength = 0.3 / freq_ghz  # м
-        wavelength_cm = wavelength * 100  # см
+        wavelength = 0.3 / freq_ghz
+        wavelength_cm = wavelength * 100
 
         ant_efficiency = 0.6 if "Однозеркальная" in ant_type else 0.7
         G_linear = (np.pi * ant_diam) ** 2 * ant_efficiency / (wavelength ** 2)
@@ -210,7 +212,7 @@ class RadioApp(ctk.CTk):
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         # Левая панель (scrollable)
-        left_frame = ctk.CTkScrollableFrame(main_frame, width=360, fg_color="#F2F2F2", corner_radius=10)
+        left_frame = ctk.CTkScrollableFrame(main_frame, width=380, fg_color="#F2F2F2", corner_radius=10)
         left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
 
         # Правая область для графика
@@ -221,34 +223,72 @@ class RadioApp(ctk.CTk):
         main_frame.grid_columnconfigure(1, weight=1)
         main_frame.grid_rowconfigure(0, weight=1)
 
-        # Шрифты
-        text_font = ("Segoe UI", 13)
-        bold_font = ("Segoe UI", 14, "bold")
+        # --- Вспомогательная функция для вставки строки "Параметр: значение" с жирным значением ---
+        def insert_parameter_line(text_widget, line, empty_line_after=True):
+            """Вставляет строку вида 'Параметр: значение' в text_widget.
+            Часть после первого двоеточия (значение) выделяется жирным.
+            Если empty_line_after=True, после строки добавляется пустая строка.
+            """
+            if ':' in line:
+                param, value = line.split(':', 1)
+                param += ':'
+                value = value.strip()
+            else:
+                param, value = line, ''
+            text_widget.insert("end", param, "normal")
+            if value:
+                text_widget.insert("end", " " + value, "bold")
+            if empty_line_after:
+                text_widget.insert("end", "\n\n")
+            else:
+                text_widget.insert("end", "\n")
 
-        # --- Исходные данные ---
-        ctk.CTkLabel(left_frame, text="Исходные данные", font=bold_font).pack(pady=(10, 5))
-        left_text = (
-            f"Высота антенны А1: {h1} м\n"
-            f"Высота антенны А2: {h2} м\n"
-            f"Рабочая частота: {freq_mhz} МГц\n"
-            f"Длина волны: {wavelength:.3f} м ({wavelength_cm:.1f} см)\n"
-            f"Надёжность линии: {reliability} %\n"
-            f"Кол-во интервалов M: {int(intervals)}\n"
-            f"Мощность передатчика: {power} Вт\n"
-            f"Чувствительность: {sensitivity} дБм\n"
-            f"Затухание в фидере: {feeder_loss} дБ\n"
-            f"Диаметр антенны: {ant_diam} м\n"
-            f"Тип антенны: {ant_type}\n"
+        # --- Блок "Исходные данные" ---
+        ctk.CTkLabel(left_frame, text="Исходные данные", font=("Segoe UI", 16, "bold")).pack(pady=(10, 5))
+        text_initial = tk.Text(left_frame, wrap="word", font=("Segoe UI", 14),
+                               bg="#F2F2F2", fg="black", bd=0, highlightthickness=0,
+                               state="normal", height=12)
+        text_initial.pack(padx=10, pady=5, fill="both", expand=False)
+        text_initial.tag_configure("normal", font=("Segoe UI", 14))
+        text_initial.tag_configure("bold", font=("Segoe UI", 14, "bold"))
+
+        initial_lines = [
+            f"Высота антенны А1: {h1} м",
+            f"Высота антенны А2: {h2} м",
+            f"Рабочая частота: {freq_mhz} МГц",
+            f"Длина волны: {wavelength:.3f} м ({wavelength_cm:.1f} см)",
+            f"Надёжность линии: {reliability} %",
+            f"Кол-во интервалов M: {int(intervals)}",
+            f"Мощность передатчика: {power} Вт",
+            f"Чувствительность: {sensitivity} дБм",
+            f"Затухание в фидере: {feeder_loss} дБ",
+            f"Диаметр антенны: {ant_diam} м",
+            f"Тип антенны: {ant_type}",
             f"Подстилающая поверхность: {self.surface_var.get()}"
-        )
-        ctk.CTkLabel(left_frame, text=left_text, justify="left", font=text_font, text_color="black",
-                     wraplength=340).pack(padx=10, pady=5, anchor="nw")
+        ]
 
-        ctk.CTkLabel(left_frame, text="", height=10).pack()
-        ctk.CTkLabel(left_frame, text="Результаты расчёта", font=bold_font).pack(pady=(10, 5))
-        results_label = ctk.CTkLabel(left_frame, text="", justify="left", font=text_font, text_color="black",
-                                     wraplength=340)
-        results_label.pack(padx=10, pady=5, anchor="nw")
+        for line in initial_lines:
+            insert_parameter_line(text_initial, line, empty_line_after=True)
+        # Удаляем последний лишний перевод строки
+        text_initial.delete("end-2c", "end")
+        text_initial.configure(state="disabled")
+
+        # --- Блок "Результаты расчёта" ---
+        ctk.CTkLabel(left_frame, text="Результаты расчёта", font=("Segoe UI", 16, "bold")).pack(pady=(20, 5))
+        text_results = tk.Text(left_frame, wrap="word", font=("Segoe UI", 14),
+                               bg="#F2F2F2", fg="black", bd=0, highlightthickness=0,
+                               state="normal", height=18)
+        text_results.pack(padx=10, pady=5, fill="both", expand=True)
+        text_results.tag_configure("normal", font=("Segoe UI", 14))
+        text_results.tag_configure("bold", font=("Segoe UI", 14, "bold"))
+
+        def update_results_text(lines_list):
+            text_results.configure(state="normal")
+            text_results.delete("1.0", "end")
+            for i, line in enumerate(lines_list):
+                empty_line = (i != len(lines_list) - 1)
+                insert_parameter_line(text_results, line, empty_line_after=empty_line)
+            text_results.configure(state="disabled")
 
         # --- График ---
         fig_p = Figure(figsize=(8, 5), dpi=100, facecolor='#FFFFFF')
@@ -262,15 +302,14 @@ class RadioApp(ctk.CTk):
                           label='Зона Френеля')
         ax_p.plot(dist, los_line, 'b--', label='Линия LOS', lw=1.5)
 
-        # Мачты – добавлена метка для отображения в легенде
         ax_p.plot([dist[0], dist[0]], [ground_start, ant_start], color='#444444', lw=3, label='Мачты')
         ax_p.plot(dist[0], ant_start, 'ko', markersize=6, markeredgecolor='white')
         ax_p.plot([dist[-1], dist[-1]], [ground_end, ant_end], color='#444444', lw=3)
         ax_p.plot(dist[-1], ant_end, 'ko', markersize=6, markeredgecolor='white')
 
-        # --- Анализ интервала (полностью сохранён) ---
+        # --- Анализ интервала ---
         clearances = los_line - elev_curved
-        if np.min(clearances) >= 0:  # LOS не пересекает рельеф -> открытый или полуоткрытый
+        if np.min(clearances) >= 0:
             min_clearance_idx = np.argmin(clearances)
             x0 = dist[min_clearance_idx]
             y0 = elev_curved[min_clearance_idx]
@@ -291,9 +330,7 @@ class RadioApp(ctk.CTk):
                 H0 = np.sqrt((wavelength * d1 * d2) / total_dist)
                 R0 = 6370000.0
                 K = 4 / 3
-                # Геометрический просвет (без учёта рефракции)
                 H_geom = y_proj - y0
-                # Поправка на рефракцию
                 delta_H = (d1 * d2) / (2 * R0) * (1 - 1 / K)
                 H_g = H_geom + delta_H
 
@@ -302,12 +339,10 @@ class RadioApp(ctk.CTk):
                 else:
                     T_i = 0
 
-                # Определяем тип интервала по эффективному просвету H_g
                 if H_g >= H0:
                     # ========== ОТКРЫТЫЙ ИНТЕРВАЛ ==========
                     h0_rel = H_g / H0
                     surface_text = self.surface_var.get()
-
                     if wavelength_cm <= 30:
                         phi_table = {
                             "Малопересеченная равнина, пойменные луга, солончаки": 0.9,
@@ -324,7 +359,6 @@ class RadioApp(ctk.CTk):
                         }
                     phi = phi_table.get(surface_text, 0.8)
 
-                    # Поиск участка отражения (пересечения LOS-H0 с рельефом)
                     critical_line = los_line - H0
                     crosses = []
                     for i in range(len(dist) - 1):
@@ -392,24 +426,25 @@ class RadioApp(ctk.CTk):
                     P_prm_dbm = P_tx_dbm + G_dBi + G_dBi - total_loss
                     status = "ПРИГОДЕН" if P_prm_dbm >= sensitivity else "НЕ ПРИГОДЕН"
 
-                    result_text = (
-                        f"d1 = {d1:.0f} м\nd2 = {d2:.0f} м\n"
-                        f"Радиус зоны Френеля H0 = {H0:.2f} м\n"
-                        f"Фактический просвет H(g) = {H_g:.2f} м\n"
-                        f"Относительный просвет h0 = {h0_rel:.3f}\n"
-                        f"Коэфф. перерыва связи T_i = {T_i:.4f} %\n"
-                        f"Тип поверхности: {surface_text}\n"
-                        f"Протяжённость участка отражения l0 = {l0:.0f} м\n"
-                        f"Коэфф. расходимости D = {D:.4f}\n"
-                        f"Коэфф. отражения Φ₃ = {phi3:.4f}\n"
-                        f"Затухание на рельеф Wp = {Wp:.1f} дБ\n"
-                        f"Суммарные потери: {total_loss:.1f} дБ\n"
-                        f"Мощность на входе приёмника: {P_prm_dbm:.1f} дБм\n"
+                    result_lines = [
+                        f"d1: {d1:.0f} м",
+                        f"d2: {d2:.0f} м",
+                        f"Радиус зоны Френеля H0: {H0:.2f} м",
+                        f"Фактический просвет H(g): {H_g:.2f} м",
+                        f"Относительный просвет h0: {h0_rel:.3f}",
+                        f"Коэфф. перерыва связи T_i: {T_i:.4f} %",
+                        f"Тип поверхности: {surface_text}",
+                        f"Протяжённость участка отражения l0: {l0:.0f} м",
+                        f"Коэфф. расходимости D: {D:.4f}",
+                        f"Коэфф. отражения Φ₃: {phi3:.4f}",
+                        f"Затухание на рельеф Wp: {Wp:.1f} дБ",
+                        f"Суммарные потери: {total_loss:.1f} дБ",
+                        f"Мощность на входе приёмника: {P_prm_dbm:.1f} дБм",
                         f"Статус интервала: {status}"
-                    )
-                    results_label.configure(text=result_text)
+                    ]
+                    update_results_text(result_lines)
 
-                    # Визуализация для открытого интервала (если есть отражающий участок)
+                    # Визуализация для открытого интервала
                     if l0 > 0 and delta_y > 0 and left_cross is not None and right_cross is not None:
                         y_left_crit = np.interp(left_cross, dist, critical_line)
                         y_right_crit = np.interp(right_cross, dist, critical_line)
@@ -441,13 +476,11 @@ class RadioApp(ctk.CTk):
 
                 else:
                     # ========== ПОЛУОТКРЫТЫЙ ИНТЕРВАЛ ==========
-                    # Рисуем перпендикуляр и точку
                     ax_p.plot(x0, y0, 'ro', markersize=8, markeredgecolor='black', zorder=5,
                               label='Ближайшая точка рельефа')
                     ax_p.plot([x0, x_proj], [y0, y_proj], 'g-', linewidth=2, label='Перпендикуляр к LOS')
 
                     critical_line = los_line - H0
-                    # Поиск пересечений
                     crosses = []
                     for i in range(len(dist) - 1):
                         diff1 = elev_curved[i] - critical_line[i]
@@ -502,20 +535,20 @@ class RadioApp(ctk.CTk):
                     P_prm_dbm = P_tx_dbm + G_dBi + G_dBi - total_loss
                     status = "ПРИГОДЕН" if P_prm_dbm >= sensitivity else "НЕ ПРИГОДЕН"
 
-                    result_text = (
-                        f"Расстояние от передатчика до препятствия d1 = {d1:.0f}м\n"
-                        f"Расстояние от приемника до препятствия d2 = {d2:.0f}м\n"
-                        f"Радиус зоны Френеля H0 = {H0:.2f} м\n"
-                        f"Геометрический просвет H(geom) = {H_geom:.2f} м\n"
-                        f"Коэфф. перерыва связи T_i = {T_i:.4f} %\n"
-                        f"Протяжённость препятствия l = {l:.0f} м\n"
-                        f"Высота препятствия h = {h:.1f} м\n"
-                        f"Затухание на рельеф Wp = {Wp:.1f} дБ\n"
-                        f"Суммарные потери: {total_loss:.1f} дБ\n"
-                        f"Мощность на входе приёмника: {P_prm_dbm:.1f} дБм\n"
+                    result_lines = [
+                        f"Расстояние от передатчика до препятствия d1: {d1:.0f} м",
+                        f"Расстояние от приёмника до препятствия d2: {d2:.0f} м",
+                        f"Радиус зоны Френеля H0: {H0:.2f} м",
+                        f"Геометрический просвет H(geom): {H_geom:.2f} м",
+                        f"Коэфф. перерыва связи T_i: {T_i:.4f} %",
+                        f"Протяжённость препятствия l: {l:.0f} м",
+                        f"Высота препятствия h: {h:.1f} м",
+                        f"Затухание на рельеф Wp: {Wp:.1f} дБ",
+                        f"Суммарные потери: {total_loss:.1f} дБ",
+                        f"Мощность на входе приёмника: {P_prm_dbm:.1f} дБм",
                         f"Статус интервала: {status}"
-                    )
-                    results_label.configure(text=result_text)
+                    ]
+                    update_results_text(result_lines)
 
                     # Визуализация для полуоткрытого интервала
                     ax_p.plot(dist, critical_line, 'k--', linewidth=1.5, alpha=0.7,
@@ -536,9 +569,9 @@ class RadioApp(ctk.CTk):
                         ax_p.text(x0 + 5, (y_mn_at_x0 + y0) / 2, f'h = {h:.1f} м', fontsize=8, color='red',
                                   bbox=dict(facecolor='white', alpha=0.6))
         else:
-            results_label.configure(text="Интервал закрытый (LOS пересекает рельеф)")
+            update_results_text(["Интервал закрытый (LOS пересекает рельеф)"])
 
-        # --- Оформление графика (изменена только легенда) ---
+        # --- Оформление графика ---
         ax_p.set_xlim(0, total_dist)
         y_min = min(0, np.min(earth_arc))
         y_max = max(ant_start, ant_end, np.max(elev_curved)) * 1.15
@@ -547,12 +580,9 @@ class RadioApp(ctk.CTk):
         ax_p.set_xlabel("Дистанция (м)")
         ax_p.set_ylabel("Высота (м)")
 
-        # Исправленная легенда: автоматический выбор места, полупрозрачность, возможность перетаскивания
         ax_p.legend(loc='best', frameon=True, facecolor='white', framealpha=0.7, fontsize=10, draggable=True)
-
         ax_p.grid(True, alpha=0.3, color='gray')
 
-        # --- Встраивание графика ---
         canvas_p = FigureCanvasTkAgg(fig_p, master=right_frame)
         canvas_p.get_tk_widget().pack(fill="both", expand=True)
         canvas_p.draw()
