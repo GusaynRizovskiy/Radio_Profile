@@ -13,6 +13,87 @@ ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
 
+def calculate_refraction_loss(Ti_percent, freq_ghz):
+    """
+    Затухание на рефракцию Wз, дБ.
+    Для Ti >= 1% – основная интерполяция по графику.
+    Для Ti < 1% – интерполяция между значениями при 1% и 0.05%.
+    """
+    if Ti_percent <= 0 or Ti_percent > 100:
+        return 0.0
+    Ti = max(0.05, min(50.0, Ti_percent))  # рабочий диапазон 0.05...50%
+
+    # ---- Основная интерполяция для Ti >= 1% ----
+    def wz_at_1percent(f):
+        # Возвращает Wз для заданной частоты при Ti = 1%
+        # Используем те же опорные частоты и коэффициенты, что и ранее
+        f_ref = [0.2, 2.0, 6.0]
+        A_ref = [-1.49, -1.91, -0.98]
+        B_ref = [5.00, 8.45, 9.99]
+        log_f = np.log10(f)
+        log_f_ref = np.log10(f_ref)
+        if f <= f_ref[0]:
+            A, B = A_ref[0], B_ref[0]
+        elif f >= f_ref[-1]:
+            A, B = A_ref[-1], B_ref[-1]
+        else:
+            idx = 0
+            while idx < len(f_ref)-1 and f > f_ref[idx+1]:
+                idx += 1
+            t = (log_f - log_f_ref[idx]) / (log_f_ref[idx+1] - log_f_ref[idx])
+            A = A_ref[idx] + t * (A_ref[idx+1] - A_ref[idx])
+            B = B_ref[idx] + t * (B_ref[idx+1] - B_ref[idx])
+        # При Ti = 1% -> log10(100/1) = 2
+        return A + B * 2.0
+
+    # ---- Таблица для Ti = 0.05% ----
+    f_tiny = np.array([0.1, 0.2, 0.4, 0.8, 2.0, 4.0, 6.0])
+    wz_tiny = np.array([9.0, 14.0, 17.0, 21.0, 25.0, 28.0, 32.0])
+
+    def wz_at_005percent(f):
+        # Интерполяция по частоте в логарифмическом масштабе
+        if f <= f_tiny[0]:
+            return wz_tiny[0]
+        if f >= f_tiny[-1]:
+            return wz_tiny[-1]
+        log_f = np.log10(f)
+        log_f_tiny = np.log10(f_tiny)
+        # Линейная интерполяция
+        return np.interp(log_f, log_f_tiny, wz_tiny)
+
+    # ---- Расчёт для заданного Ti ----
+    if Ti >= 1.0:
+        # Основная формула
+        f_ref = [0.2, 2.0, 6.0]
+        A_ref = [-1.49, -1.91, -0.98]
+        B_ref = [5.00, 8.45, 9.99]
+        log_f = np.log10(freq_ghz)
+        log_f_ref = np.log10(f_ref)
+        if freq_ghz <= f_ref[0]:
+            A, B = A_ref[0], B_ref[0]
+        elif freq_ghz >= f_ref[-1]:
+            A, B = A_ref[-1], B_ref[-1]
+        else:
+            idx = 0
+            while idx < len(f_ref)-1 and freq_ghz > f_ref[idx+1]:
+                idx += 1
+            t = (log_f - log_f_ref[idx]) / (log_f_ref[idx+1] - log_f_ref[idx])
+            A = A_ref[idx] + t * (A_ref[idx+1] - A_ref[idx])
+            B = B_ref[idx] + t * (B_ref[idx+1] - B_ref[idx])
+        Wz = A + B * np.log10(100.0 / Ti)
+    else:
+        # Ti < 1%: интерполяция между 1% и 0.05% в логарифмическом масштабе Ti
+        wz_1 = wz_at_1percent(freq_ghz)
+        wz_005 = wz_at_005percent(freq_ghz)
+        log_Ti = np.log10(Ti)
+        log_1 = np.log10(1.0)
+        log_005 = np.log10(0.05)
+        # Линейная интерполяция
+        t = (log_Ti - log_005) / (log_1 - log_005)
+        Wz = wz_005 + t * (wz_1 - wz_005)
+
+    return min(max(Wz, 0.0), 50.0)
+
 class RadioApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -382,6 +463,7 @@ class RadioApp(ctk.CTk):
                     T_i = (100 - reliability) / intervals
                 else:
                     T_i = 0
+                refraction_loss = calculate_refraction_loss(T_i, freq_ghz)
 
                 if H_g >= H0:
                     # ========== ОТКРЫТЫЙ ИНТЕРВАЛ ==========
@@ -472,20 +554,32 @@ class RadioApp(ctk.CTk):
 
                     result_lines = [
                         f"Длина интервала: {total_dist:.0f} м ({total_dist / 1000:.2f} км)",
+
                         f"Расстояние от передатчика до препятствия d1: {d1:.0f} м",
                         f"Расстояние от приемника до препятсвияd2: {d2:.0f} м",
+
                         f"Коэффициент усиления антенны: {G_dBi:.1f} дБи",
                         f"Радиус зоны Френеля H0: {H0:.2f} м",
+
                         f"Фактический просвет H(g): {H_g:.2f} м",
                         f"Относительный просвет h0: {h0_rel:.3f}",
+
                         f"Коэфф. перерыва связи T_i: {T_i:.4f} %",
                         f"Тип поверхности: {surface_text}",
+
                         f"Протяжённость участка отражения l0: {l0:.0f} м",
+
                         f"Коэфф. расходимости D: {D:.4f}",
+
                         f"Коэфф. отражения Φ₃: {phi3:.4f}",
                         f"Затухание на рельеф Wp: {Wp:.1f} дБ",
+
+                        f"Затухание на рефракцию Wз: {refraction_loss:.1f} дБ",
+
                         f"Суммарные потери: {total_loss:.1f} дБ",
+
                         f"Мощность на входе приёмника: {P_prm_dbm:.1f} дБм",
+
                         f"Статус интервала: {status}"
                     ]
                     update_results_text(result_lines)
@@ -708,6 +802,8 @@ class RadioApp(ctk.CTk):
                         f"Высота препятствия h: {h:.1f} м",
 
                         f"Затухание на рельеф Wp: {Wp:.1f} дБ",
+
+                        f"Затухание на рефракцию Wз: {refraction_loss:.1f} дБ",
 
                         f"Суммарные потери: {total_loss:.1f} дБ",
 
