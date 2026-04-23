@@ -1,9 +1,8 @@
 import numpy as np
 import rasterio
 
-
-def load_hgt_matrix(path):
-    """Читает файл и возвращает матрицу высот и границы (extent) для отрисовки."""
+def load_raster_matrix(path):
+    """Читает файл (HGT, TIF и др.) и возвращает матрицу высот и границы (extent) для отрисовки."""
     with rasterio.open(path) as src:
         # Читаем первый канал (высоты)
         matrix = src.read(1)
@@ -12,7 +11,6 @@ def load_hgt_matrix(path):
         extent = [bounds.left, bounds.right, bounds.bottom, bounds.top]
         return matrix, extent
 
-
 def haversine(coord1, coord2):
     R = 6371e3
     lat1, lon1 = np.radians(coord1)
@@ -20,7 +18,6 @@ def haversine(coord1, coord2):
     dlat, dlon = lat2 - lat1, lon2 - lon1
     a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
     return R * 2 * np.arcsin(np.sqrt(a))
-
 
 def get_elevation_profile(raster_path, p1, p2, num_points=250):
     """p1, p2 это кортежи (lat, lon)"""
@@ -37,10 +34,6 @@ def get_elevation_profile(raster_path, p1, p2, num_points=250):
         distances = [haversine(p1, (lats[i], lons[i])) for i in range(num_points)]
         return np.array(distances), np.array(elevations)
 
-
-import numpy as np
-
-
 def calculate_earth_curvature(distances):
     """
     Рассчитывает поправку на кривизну Земли для каждой точки дистанции.
@@ -49,7 +42,6 @@ def calculate_earth_curvature(distances):
     """
     R_eff = 6371000 * (4 / 3)  # Эффективный радиус Земли
     return (distances ** 2) / (2 * R_eff)
-
 
 def get_fresnel_zone(distances, total_dist, frequency_ghz):
     """
