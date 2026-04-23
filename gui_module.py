@@ -338,10 +338,14 @@ class RadioApp(ctk.CTk):
                 text_widget.insert("end", "\n")
 
         ctk.CTkLabel(left_frame, text="Исходные данные", font=("Segoe UI", 16, "bold")).pack(pady=(10, 5))
+        # Увеличиваем высоту до 25 (примерно столько занимают 12 параметров с двойным отступом)
         text_initial = tk.Text(left_frame, wrap="word", font=("Segoe UI", 14),
                                bg="#F2F2F2", fg="black", bd=0, highlightthickness=0,
-                               state="normal", height=12)
+                               state="normal", height=25, takefocus=0)  # Добавили takefocus=0
         text_initial.pack(padx=10, pady=5, fill="both", expand=False)
+
+        # Перенаправление прокрутки на родительский фрейм
+        text_initial.bind("<MouseWheel>", lambda e: left_frame._canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"))
         text_initial.tag_configure("normal", font=("Segoe UI", 14))
         text_initial.tag_configure("bold", font=("Segoe UI", 14, "bold"))
 
@@ -366,10 +370,14 @@ class RadioApp(ctk.CTk):
         text_initial.configure(state="disabled")
 
         ctk.CTkLabel(left_frame, text="Результаты расчёта", font=("Segoe UI", 16, "bold")).pack(pady=(20, 5))
+        # Увеличиваем высоту до 40 (чтобы влезли все 19+ строк результатов)
         text_results = tk.Text(left_frame, wrap="word", font=("Segoe UI", 14),
                                bg="#F2F2F2", fg="black", bd=0, highlightthickness=0,
-                               state="normal", height=24)
+                               state="normal", height=40, takefocus=0)  # Добавили takefocus=0
         text_results.pack(padx=10, pady=5, fill="both", expand=True)
+
+        # Перенаправление прокрутки на родительский фрейм
+        text_results.bind("<MouseWheel>", lambda e: left_frame._canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"))
         text_results.tag_configure("normal", font=("Segoe UI", 14))
         text_results.tag_configure("bold", font=("Segoe UI", 14, "bold"))
 
