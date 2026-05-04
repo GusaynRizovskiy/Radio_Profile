@@ -275,7 +275,7 @@ class RadioApp(ctk.CTk):
             reliability = float(self.reliability_entry.get())
             intervals = float(self.intervals_entry.get())
             power = float(self.power_entry.get())
-            sensitivity = float(self.sensitivity_entry.get())
+            sensitivity = -abs(float(self.sensitivity_entry.get()))
             feeder_loss = float(self.feeder_loss_entry.get())
             ant_diam = float(self.ant_diam_entry.get())
             ant_type = self.ant_type_var.get()
@@ -386,6 +386,7 @@ class RadioApp(ctk.CTk):
         text_results.tag_configure("bold", font=("Segoe UI", 14, "bold"))
 
         def update_results_text(lines_list):
+            print(f"P_tx: {power}, G: {G_dB}, FSPL: {free_space_loss}, Wp: {Wp}, P_rx: {P_prm_dbm}")
             text_results.configure(state="normal")
             text_results.delete("1.0", "end")
             for i, line in enumerate(lines_list):
