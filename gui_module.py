@@ -125,8 +125,8 @@ class RadioApp(ctk.CTk):
         self.intervals_entry = self.create_field(self.line_frame, "Кол-во интервалов M:", "1")
 
         self.equip_frame = self.create_group("4. Приемо-передатчик")
-        self.power_entry = self.create_field(self.equip_frame, "Мощность передатчика P (Вт):", "1.0")
-        self.sensitivity_entry = self.create_field(self.equip_frame, "Чувствительность приемника P_мин (дБ):", "-90")
+        self.power_entry = self.create_field(self.equip_frame, "Мощность передатчика P (дБм):", "1.0")
+        self.sensitivity_entry = self.create_field(self.equip_frame, "Чувствительность приемника P_мин (дБм):", "-90")
         self.feeder_loss_entry = self.create_field(self.equip_frame, "Затухание в фидере (дБ):", "3.0")
 
         self.ant_frame = self.create_group("5. Антенная система")
@@ -356,8 +356,8 @@ class RadioApp(ctk.CTk):
             f"Длина волны: {wavelength:.3f} м ({wavelength_cm:.1f} см)",
             f"Надёжность линии: {reliability} %",
             f"Кол-во интервалов M: {int(intervals)}",
-            f"Мощность передатчика: {power} Вт",
-            f"Чувствительность: {sensitivity} дБ",
+            f"Мощность передатчика: {power} дБм",
+            f"Чувствительность: {sensitivity} дБм",
             f"Затухание в фидере: {feeder_loss} дБ",
             f"Диаметр антенны D: {ant_diam} м",
             f"Тип антенны: {ant_type}",
@@ -525,7 +525,7 @@ class RadioApp(ctk.CTk):
                         Wp = 50.0
 
                     total_loss = free_space_loss + Wp + refraction_loss + 2 * feeder_loss
-                    P_tx_dbm = 10 * np.log10(power * 1000)
+                    P_tx_dbm = power
                     P_prm_dbm = P_tx_dbm + G_dB + G_dB - total_loss
                     fade_margin = P_prm_dbm - sensitivity
                     status = "ПРИГОДЕН" if fade_margin >= 0 else "НЕ ПРИГОДЕН"
@@ -547,7 +547,7 @@ class RadioApp(ctk.CTk):
                         f"Затухание на рефракцию Wзам: {refraction_loss:.1f} дБ",
                         f"Затухание на рельеф Wрель: {Wp:.1f} дБ",
                         f"Суммарные потери Wсум (Wсв + Wзам + Wрель + фидер): {total_loss:.1f} дБ",
-                        f"Мощность на входе приёмника Pпрм: {P_prm_dbm:.1f} дБ",
+                        f"Мощность на входе приёмника Pпрм: {P_prm_dbm:.1f} дБм",
                         f"Запас на замирание M: {fade_margin:.1f} дБ",
                         f"Статус интервала: {status}"
                     ]
@@ -663,7 +663,7 @@ class RadioApp(ctk.CTk):
                     Wp = np.clip(Wp, 6.0, 40.0)
 
                     total_loss = free_space_loss + Wp + refraction_loss + 2 * feeder_loss
-                    P_tx_dbm = 10 * np.log10(power * 1000)
+                    P_tx_dbm = power
                     P_prm_dbm = P_tx_dbm + G_dB + G_dB - total_loss
                     fade_margin = P_prm_dbm - sensitivity
                     status = "ПРИГОДЕН" if fade_margin >= 0 else "НЕ ПРИГОДЕН"
@@ -681,7 +681,7 @@ class RadioApp(ctk.CTk):
                         f"Затухание на рефракцию Wзам: {refraction_loss:.1f} дБ",
                         f"Затухание на рельеф Wрель: {Wp:.1f} дБ",
                         f"Суммарные потери Wсум (Wсв + Wзам + Wрель + фидер): {total_loss:.1f} дБ",
-                        f"Мощность на входе приёмника Pпрм: {P_prm_dbm:.1f} дБ",
+                        f"Мощность на входе приёмника Pпрм: {P_prm_dbm:.1f} дБм",
                         f"Запас на замирание M: {fade_margin:.1f} дБ",
                         f"Статус интервала: {status}"
                     ]
