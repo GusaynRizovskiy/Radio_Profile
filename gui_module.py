@@ -293,7 +293,11 @@ class RadioApp(ctk.CTk):
         G_dB = 10 * np.log10(G_linear) if G_linear > 0 else -np.inf
 
         d_km = distance / 1000.0
-        free_space_loss = 122 + 20 * np.log10(d_km / wavelength)
+        if distance > 0:
+            # Используем 3.14 как в вашем запросе или np.pi для точности
+            free_space_loss = 20 * np.log10((4 * 3.14 * distance) / wavelength)
+        else:
+            free_space_loss = 0
         refraction_loss = 0.0
 
         earth_arc = app_logic.get_earth_arc(dist)
